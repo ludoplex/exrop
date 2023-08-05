@@ -42,9 +42,7 @@ class RopChain(object):
         self.chains.append(chain)
 
     def insert_chain(self, chain):
-        intersect = False
-        if isintersect(chain.written_regs, set(self.get_solved_regs())):
-            intersect = True
+        intersect = bool(isintersect(chain.written_regs, set(self.get_solved_regs())))
         if intersect and len(self.chains) > 0:
             for i in range(len(self.chains)-1, -1, -1):
                 solved_before = set(self.get_solved_regs(0,i+1))
@@ -123,8 +121,8 @@ class ChainItem(object):
         self.comment = comment
         self.idx_chain = idx_chain
 
-    def parseFromModel(chain_value_model, comment="", type_val=0):
-        chain_item = chain_value_model[0]
+    def parseFromModel(self, comment="", type_val=0):
+        chain_item = self[0]
         alias = chain_item.getVariable().getAlias()
         idxchain = int(alias.replace("STACK", "")) + 1
         chain_value = chain_item.getValue()
@@ -184,7 +182,7 @@ class Chain(object):
             chain = chains[i]
             com = ""
             if chain.comment:
-                com = " # {}".format(chain.comment)
+                com = f" # {chain.comment}"
             dump_str += "$RSP+0x{:04x} : 0x{:016x}{}\n".format(sp, chain.getValue(base_addr), com)
             sp += 8
         print(dump_str, end="")
@@ -199,7 +197,7 @@ class Chain(object):
         return payload
 
     def __repr__(self):
-        return "written_regs : {}\nsolved_regs: {}\n".format(self.written_regs, self.solved_regs)
+        return f"written_regs : {self.written_regs}\nsolved_regs: {self.solved_regs}\n"
 
     def __str__(self):
-        return "written_regs : {}\nsolved_regs: {}\n".format(self.written_regs, self.solved_regs)
+        return f"written_regs : {self.written_regs}\nsolved_regs: {self.solved_regs}\n"

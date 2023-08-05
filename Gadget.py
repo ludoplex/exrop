@@ -44,10 +44,7 @@ def regx86_64(reg):
     }
     if reg in regs:
         return reg
-    for r in regs:
-        if reg in regs[r]:
-            return r
-    return False
+    return next((r for r, value in regs.items() if reg in value), False)
 
 class Gadget(object):
     def __init__(self, addr):
@@ -56,8 +53,8 @@ class Gadget(object):
         self.read_regs = set() # register yang telah terbaca
         self.popped_regs = set() # register dari hasil `pop reg`
         self.depends_regs = set() # `mov rax, rbx; ret` gadget ini akan bergantung pada rbx
-        self.defined_regs = dict() # register yang telah terdefinisi konstanta `xor rax, rax; ret`
-        self.regAst = dict()
+        self.defined_regs = {}
+        self.regAst = {}
         self.diff_sp = 0 # jarak rsp ke rbp sesaaat sebelum ret
         self.is_analyzed = False
         self.is_asted = False
@@ -103,15 +100,16 @@ class Gadget(object):
         oldEndAst = self.end_ast
         oldPivotAst = self.pivot_ast
 
-        newRegAst = dict()
-        for reg,val in oldRegAst.items():
-            newRegAst[reg] = (str(val), val.getBitvectorSize())
-
+        newRegAst = {
+            reg: (str(val), val.getBitvectorSize())
+            for reg, val in oldRegAst.items()
+        }
         newd['regAst'] = newRegAst
 
-        newMemAst = []
-        for addr,val in oldMemASt:
-            newMemAst.append((str(addr), str(val), val.getBitvectorSize()))
+        newMemAst = [
+            (str(addr), str(val), val.getBitvectorSize())
+            for addr, val in oldMemASt
+        ]
         newd['memory_write_ast'] = newMemAst
 
         if oldEndAst:
@@ -143,7 +141,7 @@ class Gadget(object):
             diff_sp = MAX_FILL_STACK
 
         for i in range(diff_sp):
-            alias = "STACK"+str(i)
+            alias = f"STACK{str(i)}"
             svar = ctx.newSymbolicVariable(64)
             svar.setAlias(alias)
             locals()[alias] = astCtxt.variable(svar)
@@ -154,7 +152,7 @@ class Gadget(object):
         for i,var in variables.items(): # get all symbolic variable for the next eval
             locals()[var.getAlias()] = astCtxt.variable(var)
 
-        newRegAst = dict()
+        newRegAst = {}
         for regname,ast in self.regAst.items():
             val = eval(ast[0])
             if isinstance(val, int):
@@ -195,7 +193,7 @@ class Gadget(object):
 
         for i in range(MAX_FILL_STACK):
             tmpb = ctx.symbolizeMemory(MemoryAccess(STACK+(i*8), CPUSIZE.QWORD))
-            tmpb.setAlias("STACK{}".format(i))
+            tmpb.setAlias(f"STACK{i}")
 
         sp = STACK
         instructions = self.insns
@@ -212,8 +210,7 @@ class Gadget(object):
             pop = False
             tmp_red = set()
             for wrt in written:
-                regname = regx86_64(wrt[0].getName())
-                if regname:
+                if regname := regx86_64(wrt[0].getName()):
                     self.written_regs.add(regname)
                     newsp = ctx.getConcreteRegisterValue(ctx.registers.rsp)
                     if (newsp - sp) == 8:
@@ -221,15 +218,14 @@ class Gadget(object):
                         self.popped_regs.add(regname)
 
             for r in red:
-                regname = regx86_64(r[0].getName())
-                if regname:
+                if regname := regx86_64(r[0].getName()):
                     tmp_red.add(regname)
                     self.read_regs.add(regname)
 
             if inst.isControlFlow(): # check if end of gadget
                 type_end = 0
                 sp_after = ctx.getConcreteRegisterValue(ctx.registers.rsp)
-                if (sp - sp_after) == BSIZE and len(tmp_red) > 0:
+                if (sp - sp_after) == BSIZE and tmp_red:
                     if inst.isMemoryRead():
                         type_end = TYPE_CALL_MEM
                         self.end_ast = ctx.simplify(inst.getLoadAccess()[0][0].getLeaAst(), True)

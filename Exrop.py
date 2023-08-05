@@ -17,11 +17,10 @@ def parseRopGadget(filename, opt=""):
     output_lines = stdout.splitlines()
     output_lines.sort(key=len)
 
-    sample_gadgets = dict()
+    sample_gadgets = {}
     regexp = re.compile(b"(0x.*) : (.*) // (.*)")
     for line in output_lines:
-        match = regexp.match(line)
-        if match:
+        if match := regexp.match(line):
             addr = int(match.group(1).decode(), 16)
             insstr = match.group(2).decode()
             opcode = bytes.fromhex(match.group(3).decode())
@@ -35,7 +34,7 @@ class Exrop(object):
 
     def find_gadgets(self, cache=False, add_opt="", num_process=1):
         if cache:
-            fcname = "./{}.exrop_cache".format(self.binary.replace("/", "_"))
+            fcname = f'./{self.binary.replace("/", "_")}.exrop_cache'
             try:
                 with open(fcname, "rb") as fc:
                     objpic = fc.read()
@@ -56,24 +55,21 @@ class Exrop(object):
 
     def stack_pivot(self, addr, avoid_char=None):
         self.chain_builder.solve_pivot(addr, avoid_char)
-        ropchain = self.chain_builder.build_chain()
-        return ropchain
+        return self.chain_builder.build_chain()
 
     def set_regs(self, regs, next_call=None, avoid_char=None):
         self.chain_builder.set_regs(regs)
         self.chain_builder.solve_chain(avoid_char)
-        ropchain = self.chain_builder.build_chain(next_call)
-        return ropchain
+        return self.chain_builder.build_chain(next_call)
 
     def set_writes(self, writes, next_call=None, avoid_char=None):
         self.chain_builder.set_writes(writes)
         self.chain_builder.solve_chain_write(avoid_char=avoid_char)
-        ropchain = self.chain_builder.build_chain(next_call)
-        return ropchain
+        return self.chain_builder.build_chain(next_call)
 
     def set_string(self, strs, next_call=None, avoid_char=None):
         BSIZE = 8
-        writes = dict()
+        writes = {}
         for addr,sstr in strs.items():
             tmpaddr = 0
             sstr += "\x00"
@@ -91,7 +87,7 @@ class Exrop(object):
 
         order_reg = call_convention[convention]
         regsx86_64 = ["rax", "rbx", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"]
-        regs = dict()
+        regs = {}
         ropchain = RopChain()
         for i in range(len(args)):
             arg = args[i]
@@ -109,7 +105,7 @@ class Exrop(object):
         return ropchain
 
     def syscall(self, sysnum, args, rwaddr=None):
-        reg_used_syscall = set(["rax", "rdi", "rsi", "rdx", "r10", "r8", "r9"])
+        reg_used_syscall = {"rax", "rdi", "rsi", "rdx", "r10", "r8", "r9"}
         args = (sysnum,) + args
         syscall = self.chain_builder.get_syscall_addr(not_write_regs=reg_used_syscall)
         assert syscall,"can't find syscall gadget!"

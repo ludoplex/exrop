@@ -33,7 +33,7 @@ def findCandidatesWriteGadgets(gadgets, avoid_char=None):
             continue
         if gadget.is_memory_write:
             isw = gadget.is_memory_write
-            if not isw in candidates:
+            if isw not in candidates:
                 candidates[isw] = [gadget]
                 continue
             candidates[isw].append(gadget)
@@ -158,10 +158,14 @@ def extract_byte(bv, pos):
     return (bv >> pos*8) & 0xff
 
 def filter_byte(astctxt, bv, bc, bsize):
-    nbv = []
-    for i in range(bsize):
-        nbv.append(astctxt.lnot(astctxt.equal(astctxt.extract(i*8+7, i*8, bv),astctxt.bv(bc, 8))))
-    return nbv
+    return [
+        astctxt.lnot(
+            astctxt.equal(
+                astctxt.extract(i * 8 + 7, i * 8, bv), astctxt.bv(bc, 8)
+            )
+        )
+        for i in range(bsize)
+    ]
 
 def check_contain_avoid_char(regvals, avoid_char):
     for char in avoid_char:
@@ -186,9 +190,9 @@ def get_all_solved(tmp_solved):
     return solved_regs
 
 def insert_tmp_solved(tmp_solved, solved):
-    intersect = False
-    if isintersect(solved.get_written_regs(), get_all_solved(tmp_solved)):
-        intersect = True
+    intersect = bool(
+        isintersect(solved.get_written_regs(), get_all_solved(tmp_solved))
+    )
     if intersect and len(tmp_solved) > 0:
         for i in range(len(tmp_solved)-1, -1, -1):
             solved_before = get_all_solved(tmp_solved[:i+1])
@@ -197,10 +201,10 @@ def insert_tmp_solved(tmp_solved, solved):
                 break
             regs_used_after = get_all_written(tmp_solved)
             if i == 0:
-                if not isintersect(solved.get_solved_regs(), regs_used_after):
-                    tmp_solved.insert(0, solved)
-                else:
+                if isintersect(solved.get_solved_regs(), regs_used_after):
                     return False
+                else:
+                    tmp_solved.insert(0, solved)
     else:
         tmp_solved.append(solved)
     return True

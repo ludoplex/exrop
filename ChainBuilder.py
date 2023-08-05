@@ -10,7 +10,7 @@ def analyzeGadget(gadget):
 class ChainBuilder(object):
     def __init__(self, gadgets=list()):
         self.gadgets = gadgets
-        self.regs = dict()
+        self.regs = {}
         self.raw_chain = None
 
     def solve_chain(self, avoid_char=None):
@@ -57,8 +57,7 @@ class ChainBuilder(object):
                 gadget.analyzeGadget()
 
     def save_analyzed_gadgets(self):
-        saved = pickle.dumps(self.gadgets)
-        return saved
+        return pickle.dumps(self.gadgets)
 
     def load_analyzed_gadgets(self, pickled_data):
         self.gadgets = pickle.loads(pickled_data)
